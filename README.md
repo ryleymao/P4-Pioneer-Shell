@@ -1,267 +1,152 @@
 # pa5-Pioneer-Shell
 Project imported from my school github account
 
-Project 5: The Pioneer Shell
+This project implements a simplified command-line shell in C, named the Pioneer Shell (or pish). It emulates the basic behavior of shells like bash, enabling users to interactively or programmatically execute commands, navigate directories, and manage processes.
 
-Due Friday, December 6, 10:00PM
-
-This assignment is from CSE29 SP24, which has its own list of acknowledgments!
+The shell supports both interactive mode (where users type commands) and batch mode (where commands are read from a script file). It practices key concepts in systems programming including string parsing, command-line argument handling, file I/O, and process management.
 
 Learning Goals
+Use of C string and I/O library functions
 
-This assignment calls upon many of the concepts that you have practiced in previous PAs. Specfically, we will practice the following concepts in C:
+Parsing input and command-line arguments
 
-string manipulation using library functions,
-command line arguments,
-process management using fork(), exec(), and wait(), and of course,
-using the terminal and vim.
-We'll also get practice with a new set of library functions for opening, reading from, and writing to files.
+Managing child processes using fork(), exec(), and wait()
 
-Introduction
+Implementing shell-like behavior with built-in commands
 
-Throughout this quarter, you have been interacting with the ieng6 server via the terminal – you’ve used vim to write code, used gcc and make to compile, used git to commit and push your changes, etc. At the heart of all this lies the shell, which acts as the user interface for the operating system.
+File reading/writing and error handling
 
-At its core, the shell is a program that reads and parses user input, and runs built-in commands (such as cd) or executable programs (such as ls, gcc, make, or vim).
+Incremental debugging and memory management with tools like Valgrind
 
-As a way to wrap up this quarter, you will now create your own shell (a massively simplified one of course). We shall call it–
-
-The Pioneer Shell
-
-The PIoneer SHell, or as we endearingly call it, pish (a name with such elegance as other popular programs in the UNIX world, e.g., git).
-
+Features
 Interactive Mode
+In interactive mode, the shell:
 
-Your basic shell simply runs on an infinite loop; it repeatedly–
+Displays a prompt
 
-prints out a prompt,
-reads keyboard input from the user
-parses the input into a command and argument list
-if the input is a built-in shell command, then executes the command directly
-otherwise, creates a child process to run the program specified in the input command, and waits for that process to finish
-This mode of operation is called the interactive mode. The other mode you will need to implement is–
+Reads a line of input from the user
+
+Tokenizes the input into a command and arguments
+
+Executes the command, either by invoking a built-in or by running an external program
 
 Batch Mode
+If run with a script file as an argument, the shell reads and executes commands from the file line by line, without displaying a prompt.
 
-Shell programs (like bash, which is what you have been using on ieng6) also support a batch execution mode, i.e., scripts. In this mode, instead of printing out a prompt and waiting for user input, the shell reads from a script file and executes the commands from that file one line at a time.
+Example:
 
-In both modes, once the shell hits the end-of-file marker (EOF), it should call exit(EXIT_SUCCESS) to exit gracefully. In the interactive mode, this can be done by pressing Ctrl-D.
-
-Parsing Input
-
-Every time the shell reads a line of input (be it from stdin or from a file), it breaks it down into our familiar argv array.
-
-For instance, if the user enters "ls -a -l\n" (notice the newline character), the shell should break it down into argv[0] = "ls", argv[1] = "-a", and argv[2] = "-l". In the starter code, we provide a struct to hold the parsed command.
-
-Handling Whitespaces
-
-You should make sure your code is robust enough to handle various sorts of whitespace characters. In this PA, we expect your shell to handle any arbitrary number of spaces ( ) and tabs (\t) between arguments.
-
-For example, your shell should be able to handle the following input: " \tls\t\t-a -l ", and still run the ls program with the correct argv array.
-
-Splitting the arguments is very much like what you did in PA3 parsing URLs. We give a specific suggestion of a function for this PA:
-
-The strtok() function
-
-char *strtok(char *str, const char *delim);
-The strtok() function breaks a string into a sequence of zero or more nonempty tokens. On the first call to strtok(), the string to be parsed should be specified in str. In each subsequent call that should parse the same string, str must be NULL. Read that last bit again - strtok is not like other functions we've used!
-
-The delim argument specifies a set of characters that delimit the tokens in the parsed string.
-
-Each call to strtok() returns a pointer to a null-terminated string containing the next token. If no more tokens are found, strtok() returns NULL.
-
-The above paragraphs are taken directly from the Linux manual (except for "read that last bit again". Joe added that). Now let’s see this function in action:
-
-Suppose we have the following string:
-
-char str[32] = "A|BC|D E   |FGH   \n"
-And we would like to break it down by any of '|', ' ', or '\n', which would leave us "A", "BC", "D", "E", and "FGH". We can write the following code:
-
-#include <stdio.h>
-#include <string.h>
-
-int main()
-{
-    char str[32] = "  A|BC|D E   |FGH   \n";
-    // break down the string at '|', ' ', and '\n' delimiters.
-    char *tok = strtok(str, " |\n");
-    while (tok) {
-        printf("\'%s\'\n", tok);
-        tok = strtok(NULL, " |\n");
-    }
-    return 0;
-}
-And running this program gives us:
-
-'A'
-'BC'
-'D'
-'E'
-'FGH'
-Note again that we try to break down (tokenize) the string using three possible delimiter characters: '|', ' ', or '\n', the delim string we pass to strtok() has these three characters: " |\n".
-
-We think you will find strtok() very useful for your implementation!
+bash
+Copy
+Edit
+./pish script.sh
+Input Parsing
+User input is parsed into a command (e.g., ls) and a list of arguments using strtok(), with whitespace and newline delimiters. The shell is robust to arbitrary spaces and tabs between arguments.
 
 Built-In Commands
+The shell supports three built-in commands:
 
-Whenver your shell executes a command, it should check whether the command is a built-in command or not. Specifically, the first whitespace-separated value in the user input string is the command. For example, if the user enters ls -a -l tests/, we break it down into argv[0] = "ls", argv[1] = "-a", argv[2] = "-l", and argv[3] = "tests/", and the command we are checking for is argv[0], which is "ls".
+exit — Exits the shell. Accepts no arguments.
 
-If the command is one of the following built-in commands, your shell should invoke your implmementation of that built-in command.
+cd <path> — Changes the current working directory. Uses chdir().
 
-There are three built-in commands to implement for this project: exit, cd, and history.
+history — Prints a numbered list of all past commands entered in interactive mode, stored in ~/.pish_history.
 
-Built-in Command: exit
+History Feature
+Commands entered in interactive mode are saved to a hidden file at ~/.pish_history
 
-When the user types exit, your shell should call the exit system call with EXIT_SUCCESS (macro for 0). This command does not take arguments. If any is provided, the shell raises a usage error.
+Empty or whitespace-only commands are not recorded
 
-Built-in Command: cd
+The history command reads and prints this file with line numbers
 
-cd should be run with precisely 1 argument, which is the path to change to. You should use the chdir() system call with the argument supplied by the user. If chdir() fails (refer to man page to see how to detect failure), you should use call perror("cd") to print an error message. We will explain the perror() function in a later section.
+Example output:
 
-Built-in Command: history
+bash
+Copy
+Edit
+1 pwd
+2 ls -a
+3 history
+Running External Programs
+If a command is not a built-in, the shell uses fork() to spawn a child process and execvp() to run the specified program. The parent process waits for the child to complete using wait().
 
-When the user enters the history command, the shell should print out the list of commands a user has ever entered in interactive mode.
+Error Handling
+The shell handles errors from various system calls using perror() with descriptive messages:
 
-(If you are on ieng6, open the ~/.bash_history file to take a look at all the commands you have executed. How far you’ve come this quarter!)
+open: when file opening fails
 
-To do this, we will need to write the execution history to a file for persistent storage. Just like bash, we designate a hidden file in the user’s home directory to store the command history.
+cd: when changing directories fails
 
-Our history file will be stored at ~/.pish_history. (You will find a function in the starter code that help you get this file path.)
+pish: when a program fails to execute
 
-When adding a command to history, If the user enters an empty command (0 length or whitespace-only), it should not be added to the history.
+fork: when forking fails
 
-When the user types in the history command to our shell, it should print out all the contents of our history file, adding a counter to each line:
+It also uses usage_error() for incorrect built-in usage, e.g. cd without an argument or exit 1.
 
-▶  history
-1 history
-▶  pwd
-/home/jpolitz/cse29fa24/pa5/Simple-Shell
-▶  ls
-Makefile  script.sh  pish  pish.c  pish.h	pish_history.c  pish_history.o  pish.o
-▶  history
-1 history
-2 pwd
-3 ls
-4 history
-Note that the number before each line is added by history. The contents of .pish_history should not contain the leading numbers.
+File Structure
+pish.c: Core shell logic, including parsing, execution, and interactive loop
 
-Running Programs
+pish_history.c: Functions for reading and writing command history
 
-If, instead, the command is not one of the aforementioned built-in commands, the shell treats it as a program, and spawns a child process to run and manage the program using the fork() and exec() family of system calls, along with wait().
+pish.h: Shared types and function declarations, including struct pish_arg
 
-Refer to the material from Week 9 for information on these system calls.
+Makefile: Builds the shell
 
-Excluded Features
+ref-pish: Reference implementation for testing (uses ~/.ref_pish_history)
 
-Now because our shells are quite simple, there are a lot of things that you may be accustomed to using that will not be present in our shell. (Just so you are aware how much work the authors of the bash shell put into their product!)
+Compilation and Usage
+Compile the shell with:
 
-You will not be able to
+go
+Copy
+Edit
+make
+Run in interactive mode:
 
--use the arrow keys to navigate your command history, -use to autocomplete commands, -use the tilde character (~) to represent your home directory, -use redirection (> and <), -pipe between commands (|), -and many more…
+bash
+Copy
+Edit
+./pish
+Run a script:
 
-Don’t be concerned when these things don’t work in your shell implementation!
+bash
+Copy
+Edit
+./pish script.sh
+Command Structure
+The shell parses input into a struct pish_arg defined as:
 
-If this were an upper-division C course, we would also ask you to implement redirection and piping, but it's [checks notes] week 10 already!
-
-Handling Errors
-
-Because the shell is quite a complex program, we expect you to handle many different errors and print appropriate error messages. To make this simple, we now introduce–
-
-Usage Errors
-
-This only applies to built-in commands. When the user invokes one of the shell’s built-in commands, we need to check if they are doing it correctly.
-
-For cd, we expect argc == 2,
-For history and exit, we expect argc == 1.
-If the users enters an incorrect command, e.g. exit 1 or cd without a path, then you should call the usage_error() function in the starter code, and continue to the next iteration of the loop.
-
-The perror() function
-
-void perror(const char *s);
-The perror() function produces a message on stderr describing the last error encountered during a library function/system call.
-
-When printing the error message, perror() first prints whatever string s we give it, followed by a colon and a blank, followed by the error message.
-
-Consider an example where we try to open a nonexistent file using fopen(), the call should fail and not return a valid FILE pointer, in which case, we call perror() to report the problem:
-
-FILE *fp = fopen("noexist.txt", "r");
-if (fp == NULL) {
-    perror("open");
-    return EXIT_FAILURE;
-}
-If we run this program, we would get the following output:
-
-open: No such file or directory
-Errors to handle
-
-You need to handle errors from the following system calls/library functions using perror(). Please pay attention to the string we give to perror() in each case and reproduce it in your code exactly.
-
-fopen() failure: perror("open"),
-chdir() failure: perror("cd"),
-execvp() failure: perror("pish"),
-fork() failure: perror("fork")
-Getting Started
-
-The starter code for this assignment is hosted on GitHub classroom. Use the following link to accept the GitHub Classroom assignment:
-
-Github Classroom: https://classroom.github.com/a/ZT3W6c0Z
-
-The Code Base
-
-You are given the following files:
-
-pish.h: Defines struct pish_arg for handling command parsing; declares functions handling the history feature.
-pish.c: Implements the shell, including parsing, some built-in commands, and running programs.
-pish_history.c: Implements the history feature.
-Makefile: Builds the project.
-ref-pish: A reference implementation of the shell. Note that in this version, the history is written to ~/.ref_pish_history rather than ~/.pish_history, to avoid conflict with your own shell program.
-(Note: The reference implementation contains a few inconsistencies with the write-up. For instance, the reference program does not report an error when cding into a nonexistent directory. If such an inconsistency occur, please stick to the writeup!)
-
-Running pish
-
-First, run make to compile everything. You should see the pish executable in your assignment directory.
-
-To run pish in interactive mode (accepting keyboard input), type
-
-$ ./pish
-Or, to run a script (e.g., script.sh), type
-
-$ ./pish script.sh
-The same applies for the reference implementation ref-pish.
-
-struct pish_arg
-
-In pish.h, you will find the definition of struct pish_arg:
-
+c
+Copy
+Edit
 #define MAX_ARGC 64
-
 struct pish_arg {
   int argc;
   char *argv[MAX_ARGC];
 };
-In our starter code, all functions handling a command (after it has been parsed) will be given a struct pish_arg argument.
+Development Suggestions
+Recommended order of implementation:
 
-Hints
+Basic command parsing and external execution (e.g., ls)
 
-This project once more requires you to think carefully about incremental development. There are many things to, how should you go about everything? In what order? Here’s one possibile plan:
+Input tokenization using strtok()
 
-Start from simple commands without any arguments, e.g., "ls".
-After that, start implementing running programs with fork and exec.
-Implementing input parsing using strtok(). Think about how to break down the line and put it into struct pish_arg.
-Once command parsing is working, go on to implement the two simple built-in commands: exit and cd. Make sure to take care of error handling.
-Next, make sure you can parse commands with arguments, e.g., "ls -a".
-Next, make sure you can handle arbitrary whitespaces.
-Make sure reading from a script file works just as well as from stdin.
-Once that’s working, you can finish implementing the history command.
-The list above is just a suggestion. You are of course encouraged to come up with your own implementation plan. But the most important thing is that you should have a plan!
-Start early, start often!
+Implement exit and cd commands with error handling
 
-Valgrind
+Handle arguments and arbitrary whitespace
 
-You have a lot of freedom for how to implement this PA. You do not necessarily need to use malloc, but if you use dynamic memory allocation at any point, make sure you free everything properly. We will include a valgrind test when grading your assignment. So make sure there are no memory issues! (Memory leaks, invalid read/writes, using uninitialized variables, etc.)
+Support script input from files
 
-Submission
+Implement history functionality
 
-Submit your code to Gradescope
-We will run your program with make and ./pish in both interactive and batch mode
-There are no design questions
-CREDITS.md is still required
+Use valgrind to ensure proper memory handling if you use malloc.
+
+Limitations
+The shell does not support:
+
+Arrow-key navigation or autocomplete
+
+Tilde (~) expansion
+
+Input/output redirection (>, <)
+
+Piping (|) These features are out of scope for this simplified project.
