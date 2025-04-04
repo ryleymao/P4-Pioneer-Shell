@@ -1,5 +1,4 @@
-# pa5-Pioneer-Shell
-Project imported from my school github account
+Project 4: Pioneer Shell (Pish)
 
 This project implements a simplified command-line shell in C, named the Pioneer Shell (or pish). It emulates the basic behavior of shells like bash, enabling users to interactively or programmatically execute commands, navigate directories, and manage processes.
 
